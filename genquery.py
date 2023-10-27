@@ -14,6 +14,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from collections import Counter
 from typing import Counter as CounterType, Iterable, List, Optional, Dict, Tuple
+from probs import Wordtype, LanguageModel, num_tokens, read_trigrams, OOV
 
 log = logging.getLogger(Path(__file__).stem)  # For usage, see findsim.py in earlier assignment.
 
@@ -106,7 +107,12 @@ def filter_top_k_with_max(sentence: str, top_k_words: list[str], max_percent: fl
             new_sentence += word + " "
     return new_sentence
     
-
+def read_log_prob(sentence: str, lm: LanguageModel):
+    log_prob = 0.0
+    x: Wordtype; y: Wordtype; z: Wordtype    # type annotation for loop variables below
+    for (x, y, z) in read_trigrams(sentence, lm.vocab):
+        log_prob += lm.log_prob(x, y, z)  # log p(z | xy)
+    return log_prob
 
 def main():
     # Parse the command-line arguments
@@ -147,7 +153,14 @@ def main():
     if args.lexicon != None: 
         pass
     if args.model != None: 
-        pass
+        lm = LanguageModel.load(args.model)
+        # remove from sentences
+        for index, sentence in enumerate(sentences): 
+            sentences.remove(sentence)
+            sentence = sentence.strip()
+            log.debug(f"Modifying sentence: {sentence}")
+            read_log_prob(sentence, lm)
+            sentences.insert(index, res)
     
     for sentence in sentences: 
         print(sentence)
